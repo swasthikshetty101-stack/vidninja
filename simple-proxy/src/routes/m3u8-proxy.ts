@@ -7,18 +7,18 @@ function parseURL(req_url: string, baseUrl?: string) {
   if (baseUrl) {
     return new URL(req_url, baseUrl).href;
   }
-
+  
   const match = req_url.match(/^(?:(https?:)?\/\/)?(([^\/?]+?)(?::(\d{0,5})(?=[\/?]|$))?)([\/?][\S\s]*|$)/i);
-
+  
   if (!match) {
     return null;
   }
-
+  
   if (!match[1]) {
     if (/^https?:/i.test(req_url)) {
       return null;
     }
-
+    
     // Scheme is omitted
     if (req_url.lastIndexOf("//", 0) === -1) {
       // "//" is omitted
@@ -26,7 +26,7 @@ function parseURL(req_url: string, baseUrl?: string) {
     }
     req_url = (match[4] === "443" ? "https:" : "http:") + req_url;
   }
-
+  
   try {
     const parsed = new URL(req_url);
     if (!parsed.hostname) {
@@ -52,30 +52,30 @@ const segmentCache: Map<string, CacheEntry> = new Map();
 function cleanupCache() {
   const now = Date.now();
   let expiredCount = 0;
-
+  
   for (const [url, entry] of segmentCache.entries()) {
     if (now - entry.timestamp > CACHE_EXPIRY_MS) {
       segmentCache.delete(url);
       expiredCount++;
     }
   }
-
+  
   if (segmentCache.size > CACHE_MAX_SIZE) {
     const entries = Array.from(segmentCache.entries())
       .sort((a, b) => a[1].timestamp - b[1].timestamp);
-
+    
     const toRemove = entries.slice(0, segmentCache.size - CACHE_MAX_SIZE);
     for (const [url] of toRemove) {
       segmentCache.delete(url);
     }
-
+    
     console.log(`Cache size limit reached. Removed ${toRemove.length} oldest entries. Current size: ${segmentCache.size}`);
   }
-
+  
   if (expiredCount > 0) {
     console.log(`Cleaned up ${expiredCount} expired cache entries. Current size: ${segmentCache.size}`);
   }
-
+  
   return segmentCache.size;
 }
 
@@ -94,17 +94,17 @@ async function prefetchSegment(url: string, headers: HeadersInit) {
   if (isCacheDisabled()) {
     return;
   }
-
+  
   if (segmentCache.size >= CACHE_MAX_SIZE) {
     cleanupCache();
   }
-
+  
   const existing = segmentCache.get(url);
   const now = Date.now();
   if (existing && (now - existing.timestamp <= CACHE_EXPIRY_MS)) {
     return;
   }
-
+  
   try {
     const response = await globalThis.fetch(url, {
       method: 'GET',
@@ -113,25 +113,25 @@ async function prefetchSegment(url: string, headers: HeadersInit) {
         ...(headers as HeadersInit),
       }
     });
-
+    
     if (!response.ok) {
       console.error(`Failed to prefetch TS segment: ${response.status} ${response.statusText}`);
       return;
     }
-
+    
     const data = new Uint8Array(await response.arrayBuffer());
-
+    
     const responseHeaders: Record<string, string> = {};
     response.headers.forEach((value, key) => {
       responseHeaders[key] = value;
     });
-
-    segmentCache.set(url, {
-      data,
+    
+    segmentCache.set(url, { 
+      data, 
       headers: responseHeaders,
       timestamp: Date.now()
     });
-
+    
     console.log(`Prefetched and cached segment: ${url}`);
   } catch (error) {
     console.error(`Error prefetching segment ${url}:`, error);
@@ -143,7 +143,7 @@ export function getCachedSegment(url: string) {
   if (isCacheDisabled()) {
     return undefined;
   }
-
+  
   const entry = segmentCache.get(url);
   if (entry) {
     if (Date.now() - entry.timestamp > CACHE_EXPIRY_MS) {
@@ -158,10 +158,10 @@ export function getCachedSegment(url: string) {
 export function getCacheStats() {
   const sizes = Array.from(segmentCache.values())
     .map(entry => entry.data.byteLength);
-
+  
   const totalBytes = sizes.reduce((sum, size) => sum + size, 0);
   const avgBytes = sizes.length > 0 ? totalBytes / sizes.length : 0;
-
+  
   return {
     entries: segmentCache.size,
     totalSizeMB: (totalBytes / (1024 * 1024)).toFixed(2),
@@ -177,14 +177,14 @@ export function getCacheStats() {
 async function proxyM3U8(event: any) {
   const url = getQuery(event).url as string;
   const headersParam = getQuery(event).headers as string;
-
+  
   if (!url) {
     return sendError(event, createError({
       statusCode: 400,
       statusMessage: 'URL parameter is required'
     }));
   }
-
+  
   let headers = {};
   try {
     headers = headersParam ? JSON.parse(headersParam) : {};
@@ -194,7 +194,7 @@ async function proxyM3U8(event: any) {
       statusMessage: 'Invalid headers format'
     }));
   }
-
+  
   try {
     const response = await globalThis.fetch(url, {
       headers: {
@@ -202,26 +202,26 @@ async function proxyM3U8(event: any) {
         ...(headers as HeadersInit),
       }
     });
-
+    
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
       console.error(`Failed to fetch M3U8: ${response.status} ${response.statusText} for URL: ${url}`);
       console.error(`Response body: ${errorText}`);
       throw new Error(`Failed to fetch M3U8: ${response.status} ${response.statusText}`);
     }
-
+    
     const m3u8Content = await response.text();
-
+    
     // Get the base URL for the host
     const host = getRequestHost(event);
     const proto = getRequestProtocol(event);
     const baseProxyUrl = `${proto}://${host}`;
-
+    
     if (m3u8Content.includes("RESOLUTION=")) {
       // This is a master playlist with multiple quality variants
       const lines = m3u8Content.split("\n");
       const newLines: string[] = [];
-
+      
       for (const line of lines) {
         if (line.startsWith("#")) {
           if (line.startsWith("#EXT-X-KEY:")) {
@@ -260,7 +260,7 @@ async function proxyM3U8(event: any) {
           newLines.push(line);
         }
       }
-
+      
       // Set appropriate headers
       setResponseHeaders(event, {
         'Content-Type': 'application/vnd.apple.mpegurl',
@@ -269,15 +269,15 @@ async function proxyM3U8(event: any) {
         'Access-Control-Allow-Methods': '*',
         'Cache-Control': 'no-cache, no-store, must-revalidate'
       });
-
+      
       return newLines.join("\n");
     } else {
       // This is a media playlist with segments
       const lines = m3u8Content.split("\n");
       const newLines: string[] = [];
-
+      
       const segmentUrls: string[] = [];
-
+      
       for (const line of lines) {
         if (line.startsWith("#")) {
           if (line.startsWith("#EXT-X-KEY:")) {
@@ -287,7 +287,7 @@ async function proxyM3U8(event: any) {
             if (keyUrl) {
               const proxyKeyUrl = `${baseProxyUrl}/ts-proxy?url=${encodeURIComponent(keyUrl)}&headers=${encodeURIComponent(JSON.stringify(headers))}`;
               newLines.push(line.replace(keyUrl, proxyKeyUrl));
-
+              
               // Only prefetch if cache is enabled
               if (!isCacheDisabled()) {
                 prefetchSegment(keyUrl, headers as HeadersInit);
@@ -303,7 +303,7 @@ async function proxyM3U8(event: any) {
           const segmentUrl = parseURL(line, url);
           if (segmentUrl) {
             segmentUrls.push(segmentUrl);
-
+            
             newLines.push(`${baseProxyUrl}/ts-proxy?url=${encodeURIComponent(segmentUrl)}&headers=${encodeURIComponent(JSON.stringify(headers))}`);
           } else {
             newLines.push(line);
@@ -313,19 +313,15 @@ async function proxyM3U8(event: any) {
           newLines.push(line);
         }
       }
-
+      
       if (segmentUrls.length > 0) {
-        // Limit prefetching to reduce rate limiting issues
-        const prefetchLimit = parseInt(process.env.PREFETCH_LIMIT || '3');
-        const segmentsToPrefetch = segmentUrls.slice(0, prefetchLimit);
-
-        console.log(`Starting to prefetch ${segmentsToPrefetch.length} of ${segmentUrls.length} segments for ${url}`);
-
+        console.log(`Starting to prefetch ${segmentUrls.length} segments for ${url}`);
+        
         // Only perform cache operations if cache is enabled
         if (!isCacheDisabled()) {
           cleanupCache();
-
-          Promise.all(segmentsToPrefetch.map(segmentUrl =>
+          
+          Promise.all(segmentUrls.map(segmentUrl => 
             prefetchSegment(segmentUrl, headers as HeadersInit)
           )).catch(error => {
             console.error('Error prefetching segments:', error);
@@ -334,7 +330,7 @@ async function proxyM3U8(event: any) {
           console.log('Cache disabled - skipping prefetch operations');
         }
       }
-
+      
       // Set appropriate headers
       setResponseHeaders(event, {
         'Content-Type': 'application/vnd.apple.mpegurl',
@@ -343,7 +339,7 @@ async function proxyM3U8(event: any) {
         'Access-Control-Allow-Methods': '*',
         'Cache-Control': 'no-cache, no-store, must-revalidate'
       });
-
+      
       return newLines.join("\n");
     }
   } catch (error: any) {
@@ -374,10 +370,10 @@ export default defineEventHandler(async (event) => {
       statusMessage: 'M3U8 proxying is disabled'
     }));
   }
-
+  
   if (event.path === '/cache-stats') {
     return handleCacheStats(event);
   }
-
+  
   return await proxyM3U8(event);
 });
