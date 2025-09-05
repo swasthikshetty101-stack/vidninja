@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom components */
+.provider-card {
+  @apply bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer;
+}
+
+.provider-card.active {
+  @apply border-blue-500 bg-blue-50;
+}
+
+.loading-spinner {
+  @apply animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600;
+}
+
+.tab-button {
+  @apply px-6 py-3 font-medium text-sm rounded-lg transition-colors;
+}
+
+.tab-button.active {
+  @apply bg-blue-600 text-white;
+}
+
+.tab-button.inactive {
+  @apply bg-gray-100 text-gray-700 hover:bg-gray-200;
+}

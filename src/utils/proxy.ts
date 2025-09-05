@@ -2,9 +2,17 @@ import { flags } from '@/entrypoint/utils/targets';
 import { Stream } from '@/providers/streams';
 
 // Default proxy URL for general purpose proxying
-const DEFAULT_PROXY_URL = 'https://proxy.nsbx.ru/proxy';
+let DEFAULT_PROXY_URL = 'https://proxy.nsbx.ru/proxy';
 // Default M3U8 proxy URL for HLS stream proxying
 let CONFIGURED_M3U8_PROXY_URL = 'https://proxy2.pstream.mov';
+
+/**
+ * Set a custom proxy URL for general purpose proxying
+ * @param proxyUrl - The base URL of the general proxy
+ */
+export function setProxyUrl(proxyUrl: string): void {
+  DEFAULT_PROXY_URL = proxyUrl;
+}
 
 /**
  * Set a custom M3U8 proxy URL to use for all M3U8 proxy requests
@@ -31,31 +39,24 @@ export function requiresProxy(stream: Stream): boolean {
 export function setupProxy(stream: Stream): Stream {
   const headers = stream.headers && Object.keys(stream.headers).length > 0 ? stream.headers : undefined;
 
-  const options = {
-    ...(stream.type === 'hls' && { depth: stream.proxyDepth ?? 0 }),
-  };
-
-  const payload: {
-    type?: 'hls' | 'mp4';
-    url?: string;
-    headers?: Record<string, string>;
-    options?: { depth?: 0 | 1 | 2 };
-  } = {
-    headers,
-    options,
-  };
-
   if (stream.type === 'hls') {
-    payload.type = 'hls';
-    payload.url = stream.playlist;
-    stream.playlist = `${DEFAULT_PROXY_URL}?${new URLSearchParams({ payload: Buffer.from(JSON.stringify(payload)).toString('base64url') })}`;
+    // Use M3U8 proxy format for HLS streams
+    const encodedUrl = encodeURIComponent(stream.playlist);
+    const encodedHeaders = headers ? encodeURIComponent(JSON.stringify(headers)) : '';
+    stream.playlist = `${CONFIGURED_M3U8_PROXY_URL}?url=${encodedUrl}${encodedHeaders ? `&headers=${encodedHeaders}` : ''}`;
   }
 
   if (stream.type === 'file') {
-    payload.type = 'mp4';
+    // For file streams, use the payload format (for TS segments, etc.)
+    const payload = {
+      type: 'mp4' as const,
+      headers,
+      options: {},
+    };
+
     Object.entries(stream.qualities).forEach((entry) => {
-      payload.url = entry[1].url;
-      entry[1].url = `${DEFAULT_PROXY_URL}?${new URLSearchParams({ payload: Buffer.from(JSON.stringify(payload)).toString('base64url') })}`;
+      const filePayload = { ...payload, url: entry[1].url };
+      entry[1].url = `${DEFAULT_PROXY_URL}?${new URLSearchParams({ payload: Buffer.from(JSON.stringify(filePayload)).toString('base64url') })}`;
     });
   }
 

@@ -142,4 +142,3 @@ For issues and questions:
 ---
 
 **Note**: This is for educational purposes. Ensure you comply with copyright laws in your jurisdiction.
-"# vidninja" 

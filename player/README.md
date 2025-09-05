@@ -1,249 +1,281 @@
-# ProviderV Player
+# ProviderV Player - React + Video.js Streaming Interface
 
-Modern web-based streaming player with automatic provider detection and professional Video.js integration.
+A modern web player interface for the ProviderV streaming platform, built with React 18, TypeScript, and Video.js.
 
-## ✨ Features
+## 🎬 Features
 
-- **🎥 Video.js Integration**: Professional video player with HLS support
-- **🔄 Automatic Provider Detection**: Seamlessly finds working streams
-- **🎬 Movies & TV Shows**: Complete support for both content types
-- **🌐 TMDB Integration**: Rich metadata from The Movie Database
-- **🔀 Provider Switching**: Switch between sources without interruption
-- **📱 Responsive Design**: Works perfectly on all devices
-- **🎯 Simple Interface**: Clean 2-tab design (Movies/TV)
+- **🎥 Professional Video Player**: Video.js 8.x with HLS streaming support
+- **⚡ React 18 + TypeScript**: Modern frontend with full type safety
+- **� TMDB Integration**: Rich metadata from The Movie Database
+- **� Auto Provider Switching**: Intelligent fallback between streaming sources
+- **📱 Responsive Design**: Works perfectly on desktop and mobile
+- **� CORS Handling**: Seamless integration with simple-proxy
+- **🎮 Intuitive UI**: Clean interface with Tailwind CSS styling
+
+## 🏗️ Architecture
+
+```
+Frontend (Vite + React)     Backend (Express.js)     Provider System
+┌─────────────────────┐    ┌───────────────────┐    ┌─────────────────┐
+│                     │    │                   │    │                 │
+│ • React Components  │◄───┤ • REST API        │◄───┤ • Media Scraping│
+│ • Video.js Player   │    │ • TMDB API        │    │ • Provider Logic│
+│ • TypeScript        │    │ • Provider Calls  │    │ • Stream URLs   │
+│ • Tailwind CSS      │    │ • Error Handling  │    │ • Metadata      │
+│                     │    │                   │    │                 │
+└─────────────────────┘    └───────────────────┘    └─────────────────┘
+         │                           │
+         └───────────────────────────┘
+              Port 5173 → Port 3001
+```
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 - Node.js 18+
 - TMDB API Key
-- Simple Proxy running on port 3000
 
-### Installation
+### 1. Install Dependencies
 ```bash
 cd player
 npm install
 ```
 
-### Configuration
+### 2. Environment Setup
 ```bash
-# Copy environment file
+# Copy environment template
 cp .env.example .env
 
-# Edit .env with your settings
-TMDB_API_KEY=your_tmdb_api_key_here
-PLAYER_PORT=3001
+# Edit .env with your TMDB API key
+TMDB_API_KEY=your_api_key_here
 ```
 
-### Start Server
+### 3. Start Development
 ```bash
+# Start backend server (port 3001)
 node index.js
+
+# In another terminal, start frontend (port 5173)
+npm run dev:client
+
+# Access the player at: http://localhost:5173
 ```
 
-Access the player at: **http://localhost:3001/player**
-
-## 🎮 Usage Guide
+## 🎮 Usage
 
 ### Movies
-1. Click the "🎥 Movies" tab
-2. Enter a TMDB ID (e.g., `550` for Fight Club)
-3. Click "🎬 Play Movie" or press Enter
-4. Player automatically finds and streams the movie
+1. Enter TMDB ID (e.g., `550` for Fight Club)
+2. Click "Play"
+3. Player automatically finds and loads streams
 
 ### TV Shows
-1. Click the "📺 TV Shows" tab
-2. Enter TMDB ID (e.g., `1399` for Game of Thrones)
-3. Enter Season number (e.g., `1`)
-4. Enter Episode number (e.g., `1`)
-5. Click "📺 Play Episode" or press Enter
+1. Enter TMDB ID (e.g., `1399` for Game of Thrones)
+2. Enter season and episode numbers
+3. Click "Play"
+4. Player loads the specific episode
 
-### Provider Switching
-- Use the dropdown menu to switch between available providers
-- No interruption to playback when switching
-- Automatic fallback if a provider fails
+### Player Controls
+- **Play/Pause**: Space bar or click play button
+- **Seek**: Click on progress bar or use arrow keys
+- **Volume**: Click volume icon or use up/down arrows
+- **Fullscreen**: Click fullscreen button or press F
 
-## 🛠️ Architecture
+## 🛠️ Development
 
+### Project Structure
 ```
-┌─────────────────────┐
-│   Web Interface     │
-│   (Video.js)        │
-├─────────────────────┤
-│   Express Server    │
-│   • API Routes      │
-│   • Static Files    │
-│   • TMDB Client     │
-├─────────────────────┤
-│   Provider System   │
-│   • Source Scrapers │
-│   • Embed Scrapers  │
-│   • Stream Detection│
-└─────────────────────┘
+player/
+├── client/                 # React frontend
+│   ├── src/
+│   │   ├── components/     # React components
+│   │   │   ├── VideoPlayer.tsx    # Video.js integration
+│   │   │   ├── MediaSearch.tsx    # Search interface
+│   │   │   └── App.tsx            # Main application
+│   │   ├── services/       # API services
+│   │   ├── types/          # TypeScript definitions
+│   │   └── index.css       # Tailwind styles
+│   ├── package.json        # Frontend dependencies
+│   └── vite.config.ts      # Vite configuration
+├── backend/                # Express.js backend
+│   ├── routes/            # API route handlers
+│   ├── services/          # Business logic
+│   └── app.js            # Express app setup
+├── index.js               # Backend entry point
+├── package.json           # Backend dependencies
+└── README.md
 ```
 
-## 📚 API Reference
+### Available Scripts
 
-### Movies
+#### Backend
+```bash
+npm start          # Start production server
+npm run dev        # Start with auto-reload
+npm run dev:server # Backend only with watch mode
+```
+
+#### Frontend
+```bash
+npm run dev:client # Start Vite dev server
+npm run build      # Build for production
+npm run preview    # Preview production build
+```
+
+### API Endpoints
+
+#### Movies
 ```http
 GET /api/v1/movie/:tmdbId
 ```
-
-**Parameters:**
-- `tmdbId` (required): The Movie Database ID
-- `providers` (optional): Comma-separated provider IDs
-- `timeout` (optional): Timeout in milliseconds (default: 30000)
-
 **Response:**
 ```json
 {
   "success": true,
   "media": {
-    "type": "movie",
     "title": "Fight Club",
-    "releaseYear": 1999,
-    "tmdbId": "550",
-    "imdbId": "tt0137523"
+    "releaseYear": "1999",
+    "tmdbId": "550"
   },
   "streams": [
     {
       "providerId": "cloudnestra",
       "providerName": "Cloudnestra",
       "stream": {
-        "type": "hls",
-        "playlist": "https://...",
-        "headers": {
-          "referer": "https://cloudnestra.com/"
-        }
+        "playlist": "http://localhost:3000/m3u8-proxy?url=...",
+        "headers": {}
       }
     }
   ]
 }
 ```
 
-### TV Shows
+#### TV Shows
 ```http
 GET /api/v1/tv/:tmdbId/:season/:episode
 ```
-
-**Parameters:**
-- `tmdbId` (required): The Movie Database ID
-- `season` (required): Season number
-- `episode` (required): Episode number
-- `providers` (optional): Comma-separated provider IDs
-- `timeout` (optional): Timeout in milliseconds
-
-### Providers List
-```http
-GET /api/v1/providers
-```
-
-Returns all available sources and embeds with their capabilities.
-
-### Health Check
-```http
-GET /health
-```
-
-Returns server status and provider counts.
-
-## 🎨 Customization
-
-### Styling
-The player uses a modern gradient design with:
-- Purple gradient background
-- Glass-morphism effects
-- Video.js dark theme
-- Responsive breakpoints
-
-### Video.js Configuration
-```javascript
+**Response:**
+```json
 {
-  fluid: true,
-  responsive: true,
-  controls: true,
-  preload: 'auto',
-  html5: {
-    hls: {
-      enableLowInitialPlaylist: true,
-      smoothQualityChange: true,
-      overrideNative: true
-    }
-  }
+  "success": true,
+  "media": {
+    "title": "Game of Thrones",
+    "releaseYear": "2011",
+    "tmdbId": "1399",
+    "season": { "number": 1 },
+    "episode": { "number": 1 }
+  },
+  "streams": [...] 
 }
 ```
 
-## 🔧 Development
+## 🎨 UI Components
 
-### File Structure
+### VideoPlayer Component
+- **Video.js Integration**: Professional video player with HLS support
+- **Event Handling**: Play, pause, seek, volume, error handling
+- **Stream Loading**: Automatic source detection and loading
+- **Responsive**: Adapts to container size
+
+### MediaSearch Component
+- **TMDB ID Input**: Quick access with movie/TV show IDs
+- **Season/Episode**: TV show specific controls
+- **Search Interface**: Title-based search (future enhancement)
+
+### App Component
+- **State Management**: Player state, loading states, error handling
+- **API Integration**: Calls to backend services
+- **UI Layout**: Responsive grid layout with Tailwind CSS
+
+## 🔧 Configuration
+
+### Environment Variables
+```bash
+# .env file
+TMDB_API_KEY=your_tmdb_api_key
+VITE_API_BASE_URL=http://localhost:3001
 ```
-player/
-├── index.js          # Express server
-├── package.json      # Dependencies
-├── .env.example      # Environment template
-└── web/
-    └── index.html    # Web interface
+
+### Video.js Configuration
+```typescript
+const player = videojs(videoElement, {
+  controls: true,
+  fluid: false,
+  responsive: false,
+  preload: 'auto',
+  techOrder: ['html5'],
+  html5: {
+    vhs: {
+      enableLowInitialPlaylist: true,
+      allowSeeksWithinUnsafeLiveWindow: true,
+      partiallyReloadSourceOnError: true,
+    },
+  },
+});
 ```
 
-### Adding New Features
-1. **Server-side**: Modify `index.js` for new API endpoints
-2. **Client-side**: Update `web/index.html` for UI changes
-3. **Styling**: Add CSS in the `<style>` section
-
-### Debugging
-- Enable debug logs in the browser console
-- Check server logs for provider errors
-- Use network tab to inspect API calls
-
-## 🌐 Integration with Simple Proxy
-
-The player automatically uses the simple-proxy for:
-- **HLS Streams**: Routes through `/m3u8-proxy` for playlist rewriting
-- **CORS Bypass**: Handles header forwarding and restrictions
-- **Segment Caching**: Improves streaming performance
-
-## 🔒 Security
-
-- **CORS Protection**: Properly configured for web browsers
-- **Input Validation**: Sanitizes TMDB IDs and parameters
-- **Error Handling**: Graceful failure without exposing internals
-- **Rate Limiting**: Respects provider rate limits
-
-## 📱 Mobile Support
-
-- **Responsive Design**: Adapts to all screen sizes
-- **Touch Controls**: Optimized for mobile interaction
-- **Performance**: Efficient on mobile connections
-
-## 🆘 Troubleshooting
+## � Troubleshooting
 
 ### Common Issues
 
-**No streams found:**
-- Verify TMDB ID is correct
-- Check if providers are working
-- Try different providers using the dropdown
-
 **Video not loading:**
-- Ensure simple-proxy is running on port 3000
-- Check browser console for errors
-- Verify CORS settings
+- Check if simple-proxy is running on port 3000
+- Verify CORS headers in browser network tab
+- Check console for Video.js errors
 
-**Provider errors:**
-- Providers may be temporarily down
-- Some providers require specific regions
-- Try switching to different providers
+**TMDB API errors:**
+- Verify API key in `.env` file
+- Check rate limits (40 requests per 10 seconds)
+- Ensure TMDB ID is valid
+
+**Player not initializing:**
+- Check Video.js console logs
+- Verify DOM element is mounted
+- Check for JavaScript errors
 
 ### Debug Mode
-Add debug parameters to see detailed logs:
-```javascript
-console.log('Debug mode enabled');
-// Check browser console for detailed information
+Enable detailed logging:
+```typescript
+// In VideoPlayer.tsx
+console.log('🎬 Video.js debug enabled');
 ```
+
+## 🚀 Production Deployment
+
+### Build Frontend
+```bash
+npm run build
+```
+
+### Environment Variables
+```bash
+NODE_ENV=production
+TMDB_API_KEY=your_production_key
+```
+
+### Nginx Configuration
+```nginx
+server {
+    listen 80;
+    root /path/to/player/dist;
+    
+    location /api {
+        proxy_pass http://localhost:3001;
+    }
+}
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create feature branch: `git checkout -b feature/amazing-feature`
+3. Follow TypeScript and React best practices
+4. Test with both movies and TV shows
+5. Submit pull request
 
 ## 📄 License
 
-Part of the ProviderV project. See main LICENSE file.
+See root LICENSE file for details.
 
 ---
 
-**Need help?** Check the main ProviderV README or create an issue.
+**Built with ❤️ using React, TypeScript, and Video.js**
