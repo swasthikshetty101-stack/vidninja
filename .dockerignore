@@ -1,0 +1,69 @@
+# Dependencies
+node_modules
+npm-debug.log*
+*/node_modules
+*/npm-debug.log*
+
+# Build output
+dist
+*/dist
+
+# Environment files
+.env
+.env.local
+.env.production
+*/.env
+*/.env.local
+*/.env.production
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode
+.idea
+*.swp
+*.swo
+
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# Test files
+*.test.js
+*.test.ts
+test/
+tests/
+*/test/
+*/tests/
+
+# Logs
+logs
+*.log
+
+# Coverage
+coverage/
+.coverage
+.nyc_output
+
+# Don't include frontend builds
+player/client/dist
+player/client/node_modules
+
+# Don't include other project folders (keep only backend)
+simple-proxy/
+src/
+lib/
+examples/
+scripts/
+tests/

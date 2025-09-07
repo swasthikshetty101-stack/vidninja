@@ -34,11 +34,22 @@
     "url": "https://github.com/p-stream/providers/issues"
   },
   "homepage": "https://p-stream.github.io/providers/",
+  "workspaces": [
+    "player/backend",
+    "player/client"
+  ],
   "scripts": {
-    "build": "vite build && tsc --noEmit",
-    "cli": "vite-node ./src/dev-cli/index.ts",
-    "player": "vite-node ./src/player/cli.ts",
-    "player:build": "tsc src/player/cli.ts --outDir dist/player --module esnext --target es2020",
+    "build": "cd player/backend && npm install && npm run build",
+    "start": "cd player/backend && npm start",
+    "backend:dev": "cd player/backend && npm run dev",
+    "backend:build": "cd player/backend && npm run build",
+    "backend:start": "cd player/backend && npm start",
+    "client:dev": "cd player/client && npm run dev",
+    "client:build": "cd player/client && npm run build",
+    "providers:build": "vite build && tsc --noEmit",
+    "providers:cli": "vite-node ./src/dev-cli/index.ts",
+    "providers:player": "vite-node ./src/player/cli.ts",
+    "providers:player:build": "tsc src/player/cli.ts --outDir dist/player --module esnext --target es2020",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:providers": "cross-env MW_TEST_PROVIDERS=true vitest run --reporter verbose",
@@ -48,7 +59,7 @@
     "lint:fix": "eslint --fix --ext .ts,.js src/",
     "lint:report": "eslint --ext .ts,.js --output-file eslint_report.json --format json src/",
     "preinstall": "npx -y only-allow pnpm",
-    "prepare": "pnpm run build",
+    "prepare": "pnpm run providers:build",
     "prepublishOnly": "pnpm test && pnpm run lint"
   },
   "start:ridomovies-proxy": "node ./scripts/ridomovies-proxy.js",

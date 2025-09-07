@@ -5,8 +5,16 @@ class ApiService {
   private proxyUrl: string;
 
   constructor() {
-    this.baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+    // Automatically detect environment and use appropriate backend URL
+    const isDevelopment = import.meta.env.DEV;
+    const localUrl = import.meta.env.VITE_API_BASE_URL_LOCAL || 'http://localhost:3001';
+    const productionUrl = import.meta.env.VITE_API_BASE_URL_PRODUCTION || 'http://localhost:3001';
+
+    this.baseUrl = import.meta.env.VITE_API_BASE_URL || (isDevelopment ? localUrl : productionUrl);
     this.proxyUrl = import.meta.env.VITE_PROXY_URL || 'http://localhost:3000';
+
+    console.log(`🌐 API Service initialized for ${isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION'} mode`);
+    console.log(`📡 Backend URL: ${this.baseUrl}`);
   }
 
   async fetchMovie(tmdbId: string, providers?: string[]): Promise<MovieResponse> {
