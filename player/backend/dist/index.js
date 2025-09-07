@@ -11,13 +11,27 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 export class PlayerServer {
     constructor() {
+        console.log('🚀 PlayerServer constructor starting...');
+        console.log('1. Getting config...');
         this.config = getConfig();
+        console.log('✅ Config loaded');
+        console.log('2. Creating Express app...');
         this.app = express();
-        // Initialize services
+        console.log('✅ Express app created');
+        console.log('3. Initializing services...');
+        console.log('3a. Creating ProviderService...');
         this.providerService = new ProviderService(this.config);
+        console.log('✅ ProviderService created');
+        console.log('3b. Creating TMDBService...');
         this.tmdbService = new TMDBService(this.config);
+        console.log('✅ TMDBService created');
+        console.log('4. Setting up middleware...');
         this.setupMiddleware();
+        console.log('✅ Middleware setup complete');
+        console.log('5. Setting up routes...');
         this.setupRoutes();
+        console.log('✅ Routes setup complete');
+        console.log('✅ PlayerServer constructor completed');
     }
     setupMiddleware() {
         // CORS
@@ -110,11 +124,22 @@ export class PlayerServer {
     }
 }
 // Start server if this file is run directly
-// Start the server if this file is executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+console.log('🔍 Checking if file is run directly...');
+console.log('import.meta.url:', import.meta.url);
+console.log('process.argv[1]:', process.argv[1]);
+// Fix ES module detection for Windows paths
+const currentFileUrl = import.meta.url;
+const runFilePath = process.argv[1].replace(/\\/g, '/');
+const runFileUrl = `file:///${runFilePath}`;
+console.log('normalized runFileUrl:', runFileUrl);
+if (currentFileUrl === runFileUrl) {
+    console.log('✅ Starting server...');
     const server = new PlayerServer();
     server.start().catch((error) => {
         console.error('❌ Failed to start server:', error);
         process.exit(1);
     });
+}
+else {
+    console.log('ℹ️ File imported as module, not starting server');
 }

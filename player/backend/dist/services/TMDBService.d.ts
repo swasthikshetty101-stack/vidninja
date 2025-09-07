@@ -17,6 +17,7 @@ export declare class TMDBService {
     constructor(config: Config);
     getMovieDetails(tmdbId: string): Promise<MediaInfo>;
     getShowDetails(tmdbId: string, seasonNumber: number, episodeNumber: number): Promise<MediaInfo>;
+    private fetchFromProxy;
     searchContent(query: string, type?: 'movie' | 'tv' | 'multi', page?: number): Promise<{
         results: TMDBSearchResult[];
         total_pages: number;

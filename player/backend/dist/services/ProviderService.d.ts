@@ -35,6 +35,18 @@ export declare class ProviderService {
     private fetcher;
     private proxiedFetcher?;
     constructor(config: Config);
+    /**
+     * Encode a direct stream URL into payload format to hide the source
+     */
+    private encodeStreamToPayload;
+    /**
+     * Decode payload URL and extract the actual stream URL (for internal use)
+     */
+    private decodePayloadUrl;
+    /**
+     * Process stream URL to always encode as payload for security
+     */
+    private processStreamUrl;
     private initializeProviders;
     getAvailableProviders(): {
         sources: {

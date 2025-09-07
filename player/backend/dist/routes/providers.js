@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { decodePayload, streamProxy } from './payload';
 export function createProviderRoutes(providerService, tmdbService) {
     const router = Router();
     // Get available providers
@@ -124,5 +125,9 @@ export function createProviderRoutes(providerService, tmdbService) {
             });
         }
     });
+    // Payload decode endpoint - converts payload URLs to stream info
+    router.get('/payload/decode', decodePayload);
+    // Stream proxy endpoint - serves video streams through our backend
+    router.get('/stream', streamProxy);
     return router;
 }

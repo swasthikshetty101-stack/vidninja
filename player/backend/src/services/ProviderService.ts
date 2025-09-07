@@ -59,6 +59,102 @@ export class ProviderService {
     this.initializeProviders();
   }
 
+  /**
+   * Encode a direct stream URL into payload format to hide the source
+   */
+  private encodeStreamToPayload(url: string, headers?: Record<string, string>, streamType?: string): string {
+    try {
+      console.log('🔍 Input URL to encode:', url);
+
+      // Check if the URL is already a payload URL - don't double encode!
+      if (url.includes('payload=')) {
+        console.log('⚠️ URL is already a payload URL, returning as-is');
+        return url;
+      }
+
+      // Determine content type based on stream type or URL
+      let type = 'mp4';
+      if (streamType === 'hls' || url.includes('.m3u8')) {
+        type = 'hls';
+      } else if (url.includes('.mp4')) {
+        type = 'mp4';
+      }
+
+      // Create payload object with stream information
+      const payloadData = {
+        type: type,
+        url: url,
+        headers: headers || {},
+        options: {},
+        timestamp: Date.now()
+      };
+
+      // Convert to base64
+      const payloadJson = JSON.stringify(payloadData);
+      const payloadBase64 = btoa(payloadJson);
+
+      // Return as stream proxy URL that Video.js can handle directly
+      const streamProxyUrl = `http://localhost:${this.config.port}/api/v1/stream?payload=${payloadBase64}`;
+
+      console.log('🔒 Encoded stream URL to payload format');
+      console.log('📦 Original URL hidden, stream proxy created');
+
+      return streamProxyUrl;
+    } catch (error) {
+      console.warn('⚠️ Failed to encode stream URL to payload:', error);
+      return url; // Fallback to original URL
+    }
+  }
+
+  /**
+   * Decode payload URL and extract the actual stream URL (for internal use)
+   */
+  private decodePayloadUrl(url: string): string {
+    try {
+      // Check if this is a payload URL
+      const payloadMatch = url.match(/[?&]payload=([^&]+)/);
+      if (payloadMatch) {
+        const payloadBase64 = payloadMatch[1];
+        const decodedPayload = atob(payloadBase64);
+        const payloadData = JSON.parse(decodedPayload);
+
+        console.log('🔍 Decoded payload for internal processing');
+
+        // Extract the actual URL from the payload
+        if (payloadData.url) {
+          return payloadData.url;
+        }
+      }
+
+      // Return original URL if not a payload URL
+      return url;
+    } catch (error) {
+      console.warn('⚠️ Failed to decode payload URL:', error);
+      return url;
+    }
+  }
+
+  /**
+   * Process stream URL to always encode as payload for security
+   */
+  private processStreamUrl(streamUrl: string, headers?: Record<string, string>, streamType?: string): string {
+    console.log('🔍 Processing stream URL:', streamUrl);
+
+    // Check if this is already a payload URL pointing to external proxy
+    const payloadMatch = streamUrl.match(/^https?:\/\/[^\/]+\/?\?payload=(.+)$/);
+    if (payloadMatch) {
+      const payload = payloadMatch[1];
+      console.log('🔄 Redirecting payload URL to our backend stream proxy');
+
+      // Create a URL pointing to our backend's stream proxy
+      return `http://localhost:${this.config.port}/api/v1/stream?payload=${payload}`;
+    }
+
+    // For direct URLs (like from Cloudnestra), encode them as payloads
+    console.log('🔒 Encoding direct URL as payload to hide source');
+    return this.encodeStreamToPayload(streamUrl, headers, streamType);
+  }
+
   private initializeProviders() {
     console.log('🔧 Initializing provider system...');
 
@@ -149,7 +245,7 @@ export class ProviderService {
   public async scrapeMovie(
     media: MediaInfo,
     requestedProviders?: string[],
-    timeout: number = 30000
+    timeout: number = 15000 // Reduced timeout to 15 seconds
   ): Promise<StreamResult[]> {
     console.log(`🎬 Scraping movie: ${media.title} (${media.releaseYear})`);
 
@@ -163,14 +259,18 @@ export class ProviderService {
       availableProviders = availableProviders.filter(p => requestedProviders.includes(p.id));
     }
 
+    // Skip problematic providers for now
+    const problematicProviders = ['ridomovies'];
+    availableProviders = availableProviders.filter(p => !problematicProviders.includes(p.id));
+
     console.log(`🔍 Using ${availableProviders.length} providers`);
 
     const streams: StreamResult[] = [];
 
     // Try providers in order of rank (highest first)
-    for (const provider of availableProviders.slice(0, 5)) {
+    for (const provider of availableProviders.slice(0, 8)) { // Try more providers
       try {
-        console.log(`🚀 Trying provider: ${provider.name}`);
+        console.log(`🚀 Trying provider: ${provider.name} (rank: ${provider.rank})`);
         console.log(`🔧 Using proxy: ${this.config.proxyUrl ? 'Yes' : 'No'}`);
 
         const scrapeMedia = this.convertToScrapeMedia(media);
@@ -182,12 +282,12 @@ export class ProviderService {
           media: scrapeMedia,
         });
 
-        const result = await Promise.race([
-          scrapePromise,
-          new Promise<SourcererOutput>((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout')), timeout)
-          ),
-        ]) as SourcererOutput;
+        const timeoutPromise = new Promise<SourcererOutput>((_, reject) =>
+          setTimeout(() => reject(new Error(`Provider ${provider.name} timed out after ${timeout}ms`)), timeout)
+        );
+
+        console.log(`⏱️ Starting scrape with ${timeout}ms timeout...`);
+        const result = await Promise.race([scrapePromise, timeoutPromise]) as SourcererOutput;
 
         if (result.stream && result.stream.length > 0) {
           const stream = result.stream[0];
@@ -212,11 +312,14 @@ export class ProviderService {
             continue;
           }
 
+          // Encode stream URL as payload to hide source
+          const payloadUrl = this.processStreamUrl(streamUrl, stream.headers, stream.type);
+
           streams.push({
             providerId: provider.id,
             providerName: provider.name,
             stream: {
-              playlist: streamUrl,
+              playlist: payloadUrl,
               type: stream.type,
               headers: stream.headers,
               captions: stream.captions,
@@ -225,7 +328,7 @@ export class ProviderService {
           });
 
           console.log(`✅ Successfully scraped from ${provider.name}`);
-          console.log(`🔗 Stream URL: ${streamUrl}`);
+          console.log(`� Stream URL encoded as payload`);
 
           // Stop after finding first working stream
           break;
@@ -233,11 +336,18 @@ export class ProviderService {
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         console.warn(`❌ Provider ${provider.name} failed: ${errorMessage}`);
+
+        // Add some delay between failed providers to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
 
     if (streams.length === 0) {
       console.warn('⚠️ No streams found for this movie');
+      console.log('💡 You can try:');
+      console.log('   1. Different search terms');
+      console.log('   2. Check if movie exists on target sites');
+      console.log('   3. Try again later (some providers may be temporarily down)');
     }
 
     return streams;
@@ -305,11 +415,14 @@ export class ProviderService {
             continue;
           }
 
+          // Encode stream URL as payload to hide source
+          const payloadUrl = this.processStreamUrl(streamUrl, stream.headers, stream.type);
+
           streams.push({
             providerId: provider.id,
             providerName: provider.name,
             stream: {
-              playlist: streamUrl,
+              playlist: payloadUrl,
               type: stream.type,
               headers: stream.headers,
               captions: stream.captions,
@@ -318,7 +431,7 @@ export class ProviderService {
           });
 
           console.log(`✅ Successfully scraped from ${provider.name}`);
-          console.log(`🔗 Stream URL: ${streamUrl}`);
+          console.log(`� Stream URL encoded as payload`);
 
           // Stop after finding first working stream
           break;
