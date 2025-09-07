@@ -16,13 +16,20 @@ class ApiService {
       url.searchParams.set('providers', providers.join(','));
     }
 
+    console.log('🌐 API Service: Making request to:', url.toString());
+
     const response = await fetch(url.toString());
+
+    console.log('📡 API Service: Response status:', response.status, response.statusText);
 
     if (!response.ok) {
       throw new Error(`Failed to fetch movie: ${response.statusText}`);
     }
 
-    return response.json();
+    const data = await response.json();
+    console.log('📦 API Service: Response data:', data);
+
+    return data;
   }
 
   async fetchTvShow(tmdbId: string, season: number, episode: number, providers?: string[]): Promise<TvResponse> {

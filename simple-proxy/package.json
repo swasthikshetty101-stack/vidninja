@@ -10,6 +10,7 @@
     "build:aws": "NITRO_PRESET=aws_lambda npm run build",
     "build:node": "NITRO_PRESET=node-server npm run build",
     "build:netlify": "NITRO_PRESET=netlify_edge npm run build",
+    "deploy:cloudflare": "powershell -ExecutionPolicy Bypass -File deploy-cloudflare.ps1",
     "start": "node .output/server/index.mjs",
     "lint": "eslint --ext .ts src/",
     "lint:fix": "eslint --fix --ext .ts src/",

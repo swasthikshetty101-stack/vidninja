@@ -1,4 +1,13 @@
-name = "simple-proxy"
-main = "./.output/server/index.mjs"
-workers_dev = true
-compatibility_date = "2022-09-10"
+name = "simple-proxy-bypass"
+compatibility_date = "2023-05-18"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "dist"
+
+[env.production.vars]
+NODE_ENV = "production"
+DISABLE_CACHE = "false"
+DISABLE_M3U8 = "false"
+
+[env.preview.vars]
+NODE_ENV = "development"
+DISABLE_CACHE = "true"

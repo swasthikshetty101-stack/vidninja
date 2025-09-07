@@ -1,10 +1,13 @@
-import { setResponseHeaders } from 'h3';
+import { setResponseHeaders, getQuery, sendError, createError, defineEventHandler, isPreflightRequest, handleCors } from 'h3';
 import { getCachedSegment } from './m3u8-proxy';
-import { mediaBypassFetch } from '@/utils/cloudflare-fetch';
 
 // Check if caching is disabled via environment variable
 const isCacheDisabled = () => process.env.DISABLE_CACHE === 'true';
 
+/**
+ * Short URL handler for video segments (replaces ts-proxy)
+ * Handles URLs like /s/{payload} for shorter, more disguised URLs
+ */
 export default defineEventHandler(async (event) => {
   // Handle CORS preflight requests
   if (isPreflightRequest(event)) return handleCors(event, {});
@@ -16,49 +19,35 @@ export default defineEventHandler(async (event) => {
     }));
   }
 
-  const query = getQuery(event);
+  // Extract payload from the URL path
+  const pathParts = event.path?.split('/') || [];
+  const payloadBase64 = pathParts[pathParts.length - 1];
+
+  if (!payloadBase64) {
+    return sendError(event, createError({
+      statusCode: 400,
+      statusMessage: 'Invalid segment URL format'
+    }));
+  }
+
   let url: string;
   let headers: any = {};
 
-  // Check if using payload format (new secure method)
-  if (query.payload) {
-    try {
-      // Decode payload to get actual URL and headers
-      const payloadBase64 = query.payload as string;
-      const payloadJson = Buffer.from(payloadBase64, 'base64').toString();
-      const payloadData = JSON.parse(payloadJson);
+  try {
+    // Decode payload to get actual URL and headers
+    const payloadJson = Buffer.from(payloadBase64, 'base64').toString();
+    const payloadData = JSON.parse(payloadJson);
 
-      url = payloadData.url;
-      headers = payloadData.headers || {};
+    url = payloadData.url;
+    headers = payloadData.headers || {};
 
-      console.log('🔓 Decoded TS payload for secure streaming');
-    } catch (error) {
-      console.error('❌ Failed to decode TS payload:', error);
-      return sendError(event, createError({
-        statusCode: 400,
-        statusMessage: 'Invalid payload format'
-      }));
-    }
-  } else {
-    // Fallback to legacy URL format
-    url = query.url as string;
-    const headersParam = query.headers as string;
-
-    if (!url) {
-      return sendError(event, createError({
-        statusCode: 400,
-        statusMessage: 'URL or payload parameter is required'
-      }));
-    }
-
-    try {
-      headers = headersParam ? JSON.parse(headersParam) : {};
-    } catch (e) {
-      return sendError(event, createError({
-        statusCode: 400,
-        statusMessage: 'Invalid headers format'
-      }));
-    }
+    console.log('🔓 Decoded segment payload for secure streaming');
+  } catch (error) {
+    console.error('❌ Failed to decode segment payload:', error);
+    return sendError(event, createError({
+      statusCode: 400,
+      statusMessage: 'Invalid payload format'
+    }));
   }
 
   try {
@@ -80,15 +69,11 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    console.log(`📺 TS Cloudflare Bypass: ${url}`);
-
-    const response = await mediaBypassFetch(url, {
-      bypassISP: true,
-      maxRetries: 2,
-      timeout: 15000,
+    const response = await globalThis.fetch(url, {
+      method: 'GET',
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:93.0) Gecko/20100101 Firefox/93.0',
-        ...(headers as Record<string, string>),
+        ...(headers as HeadersInit),
       }
     });
 
@@ -98,14 +83,12 @@ export default defineEventHandler(async (event) => {
       // Wait before retry (1-3 seconds)
       await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
 
-      // Retry once with bypass
-      const retryResponse = await mediaBypassFetch(url, {
-        bypassISP: true,
-        maxRetries: 1,
-        timeout: 20000,
+      // Retry once
+      const retryResponse = await globalThis.fetch(url, {
+        method: 'GET',
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:93.0) Gecko/20100101 Firefox/93.0',
-          ...(headers as Record<string, string>),
+          ...(headers as HeadersInit),
         }
       });
 
