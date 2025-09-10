@@ -59,7 +59,7 @@ cd simple-proxy && npm run dev
 # Terminal 2: Start player server (port 3001)
 cd player && node index.js
 
-# Access the player at: http://localhost:3001/player
+# Access the player at: https://cdn.vidninja.pro/player
 ```
 
 ## 🎮 Usage
